@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 250 251 253;
+  --foreground: 13 17 28;
+}
+
+html, body {
+  background: rgb(var(--background));
+  color: rgb(var(--foreground));
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.card {
+  @apply bg-white rounded-2xl shadow-sm border border-ink-100 p-5;
+}
+.card-title {
+  @apply text-sm font-semibold text-ink-600 uppercase tracking-wide;
+}
+.kpi {
+  @apply text-3xl font-bold text-ink-900 tabular-nums;
+}
+.kpi-sub {
+  @apply text-xs text-ink-400 mt-1;
+}
+.section-h {
+  @apply text-lg font-semibold text-ink-800;
+}
+.section-sub {
+  @apply text-sm text-ink-400;
+}
+.tag {
+  @apply inline-block px-2 py-0.5 text-xs rounded-md bg-brand-50 text-brand-700 font-medium;
+}
+.tag-warn {
+  @apply inline-block px-2 py-0.5 text-xs rounded-md bg-amber-50 text-amber-700 font-medium;
+}
