@@ -10,6 +10,20 @@ export type Metrics = {
   rmse: number;
   n_train: number;
   n_test: number;
+  split?: string;
+};
+
+export type EventImpact = {
+  historical_avg_per_day: number;
+  uplift_vs_baseline_pct: number;
+  forecast_total_units: number;
+  forecast_days_in_window: number;
+};
+
+export type MedicineImpact = {
+  medicine: string;
+  baseline_per_day: number;
+  events: Record<string, EventImpact>;
 };
 
 export type ForecastDailyRow = {
@@ -75,6 +89,7 @@ export type Forecasts = {
     muharram_windows: [string, string][];
     weather_climatology: WeatherClimatology[];
   };
+  medicine_feature_impact?: MedicineImpact[];
   explainability: {
     global_shap: ShapImportance[];
     local_lime: Record<string, LimeContribution[]>;

@@ -8,6 +8,7 @@ import ShapChart from "@/components/ShapChart";
 import LimePanel from "@/components/LimePanel";
 import MacroPanel from "@/components/MacroPanel";
 import MonthlyHeatmap from "@/components/MonthlyHeatmap";
+import MedicineFeatureImpact from "@/components/MedicineFeatureImpact";
 import Footer from "@/components/Footer";
 import { loadForecasts } from "@/lib/data";
 
@@ -26,6 +27,7 @@ export default async function Home() {
         </div>
         <LahoreTrendsChart data={data} />
         <TopMedicinesTable data={data} />
+        <MedicineFeatureImpact data={data} />
         <MonthlyHeatmap data={data} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ShapChart data={data} />
