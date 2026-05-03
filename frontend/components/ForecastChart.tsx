@@ -20,39 +20,50 @@ const BANDS: { start: string; end: string; label: string; color: string }[] = [
   { start: "2025-11-09", end: "2025-11-09", label: "Iqbal Day",          color: "#fbbf24" },
   { start: "2025-12-25", end: "2025-12-25", label: "Quaid Day",          color: "#fb7185" },
   { start: "2026-02-18", end: "2026-03-19", label: "Ramadan 2026",       color: "#34d399" },
+  { start: "2026-05-27", end: "2026-05-29", label: "Eid-ul-Adha 2026",   color: "#fbbf24" },
 ];
 
-export default function ForecastChart({ data }: { data: Forecasts }) {
+export default function ForecastChart({
+  data,
+  horizonDays,
+}: {
+  data: Forecasts;
+  horizonDays?: number;
+}) {
   const [medicine, setMedicine] = useState<string>(data.top_medicines[0] ?? data.medicines[0]);
 
-  const series = useMemo(() => {
-    const hist = data.history.daily_total
-      .filter(() => false)
-      .map((r) => ({ date: r.date, history: 0, forecast: undefined as number | undefined }));
-    const histPerMed: Record<string, Record<string, number>> = {};
-    return histPerMed;
-  }, [data]);
+  const horizonCutoff = useMemo(() => {
+    const allDates = data.forecast.daily.map((r) => r.date).sort();
+    if (!horizonDays || allDates.length === 0) return null;
+    const start = new Date(allDates[0]);
+    const cutoff = new Date(start);
+    cutoff.setDate(cutoff.getDate() + horizonDays - 1);
+    return cutoff.toISOString().slice(0, 10);
+  }, [data, horizonDays]);
 
   const merged = useMemo(() => {
-    // Reconstruct historical per-medicine series from forecast.daily not enough,
-    // so use forecast daily for the chosen medicine + history total scaled.
     const fc = data.forecast.daily.filter((r) => r.medicine === medicine);
-    return fc.map((r) => ({
+    const sliced = horizonCutoff ? fc.filter((r) => r.date <= horizonCutoff) : fc;
+    return sliced.map((r) => ({
       date: r.date,
       forecast: r.qty,
     }));
-  }, [data, medicine]);
+  }, [data, medicine, horizonCutoff]);
 
   const monthlyAgg = useMemo(() => {
     const rows = data.forecast.monthly_by_medicine.filter((r) => r.GenericName === medicine);
-    return rows;
-  }, [data, medicine]);
+    if (!horizonCutoff) return rows;
+    const cutoffMonth = horizonCutoff.slice(0, 7);
+    return rows.filter((r) => (r.month ?? "") <= cutoffMonth);
+  }, [data, medicine, horizonCutoff]);
+
+  const effectiveDays = horizonDays ?? data.forecast.horizon_days;
 
   return (
     <div className="card">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
         <div>
-          <div className="section-h">Forecast for next {data.forecast.horizon_days} days</div>
+          <div className="section-h">Forecast for next {effectiveDays} days</div>
           <div className="section-sub">
             Choose a medicine to inspect daily projected demand. Shaded bands mark Eid /
             Ramadan / public-holiday windows the model accounts for.
