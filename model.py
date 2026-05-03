@@ -40,7 +40,8 @@ ROOT = Path(__file__).parent
 CSV_PATH = ROOT / "data.csv"
 OUT_PATH = ROOT / "frontend" / "public" / "forecasts.json"
 BACKEND_OUT = ROOT / "backend" / "forecasts.json"
-FORECAST_DAYS = 240  # ~8 months — covers next monsoon + dengue peak
+FORECAST_DAYS = 180  # ~6 months — frontend horizon filter offers 3/4/5/6m
+HORIZON_BUCKETS = {"3m": 90, "4m": 120, "5m": 150, "6m": 180}
 
 
 # ---------------------------------------------------------------------------
@@ -444,23 +445,32 @@ def medicine_feature_impact(daily: pd.DataFrame, fc: pd.DataFrame, medicines):
 
     fc = fc.copy()
     fc["d"] = fc["date"].dt.date
-    unique_fc_dates = sorted(fc["d"].unique())
-    date_event_map = {
-        ev: {dt for dt in unique_fc_dates if cond(dt)}
-        for ev, cond in {
-            "dengue_peak":   lambda d: dengue_intensity(d) >= 0.5,
-            "dengue_season": lambda d: bool(is_dengue_season(d)),
-            "ramadan":       lambda d: _in_window(d, RAMADAN_WINDOWS) == 1,
-            "eid_fitr":      lambda d: _in_window(d, EID_FITR_WINDOWS) == 1,
-            "eid_adha":      lambda d: _in_window(d, EID_ADHA_WINDOWS) == 1,
-            "muharram":      lambda d: _in_window(d, MUHARRAM_WINDOWS) == 1,
-            "smog_season":   lambda d: d.month in (11, 12, 1, 2),
-            "monsoon":       lambda d: d.month in (7, 8, 9),
-            "summer_heat":   lambda d: d.month in (5, 6, 7),
-            "weekend":       lambda d: d.weekday() >= 5,
-        }.items()
+    fc_min_date = fc["d"].min()
+    event_conds = {
+        "dengue_peak":   lambda d: dengue_intensity(d) >= 0.5,
+        "dengue_season": lambda d: bool(is_dengue_season(d)),
+        "ramadan":       lambda d: _in_window(d, RAMADAN_WINDOWS) == 1,
+        "eid_fitr":      lambda d: _in_window(d, EID_FITR_WINDOWS) == 1,
+        "eid_adha":      lambda d: _in_window(d, EID_ADHA_WINDOWS) == 1,
+        "muharram":      lambda d: _in_window(d, MUHARRAM_WINDOWS) == 1,
+        "smog_season":   lambda d: d.month in (11, 12, 1, 2),
+        "monsoon":       lambda d: d.month in (7, 8, 9),
+        "summer_heat":   lambda d: d.month in (5, 6, 7),
+        "weekend":       lambda d: d.weekday() >= 5,
     }
-    fc_masks = {ev: fc["d"].isin(date_event_map[ev]) for ev in date_event_map}
+    # Pre-compute, per (horizon, event), the set of forecast dates inside
+    # that event window — and the row mask we'll use to sum forecast units.
+    horizon_date_event = {}    # horizon_label -> ev -> set[date]
+    horizon_fc_masks   = {}    # horizon_label -> ev -> bool Series
+    for label, days in HORIZON_BUCKETS.items():
+        cutoff = fc_min_date + pd.Timedelta(days=days - 1).to_pytimedelta()
+        h_dates = sorted([d for d in fc["d"].unique() if d <= cutoff])
+        horizon_date_event[label] = {
+            ev: {dt for dt in h_dates if cond(dt)} for ev, cond in event_conds.items()
+        }
+        horizon_fc_masks[label] = {
+            ev: fc["d"].isin(horizon_date_event[label][ev]) for ev in event_conds
+        }
 
     rows = []
     overall_avg = daily.groupby("GenericName")["qty"].mean().to_dict()
@@ -475,16 +485,24 @@ def medicine_feature_impact(daily: pd.DataFrame, fc: pd.DataFrame, medicines):
             "baseline_per_day": round(baseline, 2),
             "events": {},
         }
+        med_fc = fc[fc["GenericName"] == med]
         for ev, m in masks.items():
             avg = _avg_in_mask(daily, m, med)
             uplift = (avg / baseline - 1.0) if baseline else 0.0
-            fc_sub = fc[(fc["GenericName"] == med) & fc_masks[ev]]
-            forecast_total = float(fc_sub["qty"].sum())
+            per_horizon = {}
+            for label in HORIZON_BUCKETS:
+                fc_mask = horizon_fc_masks[label][ev]
+                # restrict to this medicine's rows inside the horizon-event window
+                med_mask = (fc["GenericName"] == med) & fc_mask
+                forecast_total = float(fc.loc[med_mask, "qty"].sum())
+                per_horizon[label] = {
+                    "total_units": round(forecast_total, 1),
+                    "days_in_window": len(horizon_date_event[label][ev]),
+                }
             record["events"][ev] = {
                 "historical_avg_per_day": round(avg, 2),
                 "uplift_vs_baseline_pct": round(uplift * 100, 1),
-                "forecast_total_units": round(forecast_total, 1),
-                "forecast_days_in_window": len(date_event_map.get(ev, set())),
+                "forecast": per_horizon,
             }
         rows.append(record)
 
@@ -606,6 +624,7 @@ def main():
         },
         "forecast": {
             "horizon_days": FORECAST_DAYS,
+            "horizon_buckets": HORIZON_BUCKETS,
             "daily": [
                 {
                     "date": r["date"].date().isoformat(),

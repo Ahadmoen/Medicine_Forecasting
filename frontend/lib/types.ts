@@ -13,11 +13,17 @@ export type Metrics = {
   split?: string;
 };
 
+export type HorizonLabel = "3m" | "4m" | "5m" | "6m";
+
+export type HorizonForecast = {
+  total_units: number;
+  days_in_window: number;
+};
+
 export type EventImpact = {
   historical_avg_per_day: number;
   uplift_vs_baseline_pct: number;
-  forecast_total_units: number;
-  forecast_days_in_window: number;
+  forecast: Record<HorizonLabel, HorizonForecast>;
 };
 
 export type MedicineImpact = {
@@ -76,6 +82,7 @@ export type Forecasts = {
   };
   forecast: {
     horizon_days: number;
+    horizon_buckets?: Record<HorizonLabel, number>;
     daily: ForecastDailyRow[];
     monthly_by_medicine: ForecastAggRow[];
     weekly_by_medicine: ForecastAggRow[];

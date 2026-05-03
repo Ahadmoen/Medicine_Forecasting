@@ -1,14 +1,12 @@
 import Header from "@/components/Header";
 import KpiCards from "@/components/KpiCards";
 import HistoryChart from "@/components/HistoryChart";
-import ForecastChart from "@/components/ForecastChart";
 import LahoreTrendsChart from "@/components/LahoreTrendsChart";
 import TopMedicinesTable from "@/components/TopMedicinesTable";
 import ShapChart from "@/components/ShapChart";
 import LimePanel from "@/components/LimePanel";
 import MacroPanel from "@/components/MacroPanel";
-import MonthlyHeatmap from "@/components/MonthlyHeatmap";
-import MedicineFeatureImpact from "@/components/MedicineFeatureImpact";
+import ForecastSection from "@/components/ForecastSection";
 import Footer from "@/components/Footer";
 import { loadForecasts } from "@/lib/data";
 
@@ -21,14 +19,10 @@ export default async function Home() {
       <Header generatedAt={data.generated_at} />
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
         <KpiCards data={data} />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <HistoryChart data={data} />
-          <ForecastChart data={data} />
-        </div>
+        <HistoryChart data={data} />
+        <ForecastSection data={data} />
         <LahoreTrendsChart data={data} />
         <TopMedicinesTable data={data} />
-        <MedicineFeatureImpact data={data} />
-        <MonthlyHeatmap data={data} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ShapChart data={data} />
           <LimePanel data={data} />

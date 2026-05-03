@@ -1,10 +1,30 @@
 import { Forecasts } from "@/lib/types";
 
-export default function MonthlyHeatmap({ data }: { data: Forecasts }) {
+export default function MonthlyHeatmap({
+  data,
+  horizonDays,
+}: {
+  data: Forecasts;
+  horizonDays?: number;
+}) {
   const meds = data.top_medicines.slice(0, 12);
+
+  // Compute the cutoff month based on the chosen horizon, so the heatmap
+  // only shows the months actually inside the active forecast window.
+  const cutoffMonth = (() => {
+    const allDates = data.forecast.daily.map((r) => r.date).sort();
+    if (!horizonDays || allDates.length === 0) return null;
+    const start = new Date(allDates[0]);
+    const cutoff = new Date(start);
+    cutoff.setDate(cutoff.getDate() + horizonDays - 1);
+    return cutoff.toISOString().slice(0, 7);
+  })();
+
   const months = Array.from(
     new Set(data.forecast.monthly_by_medicine.map((r) => r.month!))
-  ).sort();
+  )
+    .sort()
+    .filter((m) => (cutoffMonth ? m <= cutoffMonth : true));
 
   const lookup: Record<string, Record<string, number>> = {};
   for (const r of data.forecast.monthly_by_medicine) {
@@ -20,7 +40,7 @@ export default function MonthlyHeatmap({ data }: { data: Forecasts }) {
       <div className="section-h mb-1">Monthly demand heatmap</div>
       <div className="section-sub mb-4">
         Predicted units per medicine, per calendar month — quick glance at where
-        consumption peaks.
+        consumption peaks (clipped to the active horizon).
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

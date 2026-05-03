@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Forecasts, MedicineImpact } from "@/lib/types";
+import { Forecasts, HorizonLabel, MedicineImpact } from "@/lib/types";
 
 const EVENT_LABELS: Record<string, { label: string; sub: string }> = {
   dengue_peak:   { label: "Dengue peak",      sub: "intensity ≥ 0.5 (≈ Sep-Nov)" },
@@ -39,7 +39,15 @@ function upliftBg(pct: number): string {
   return "bg-ink-50 text-ink-600";
 }
 
-export default function MedicineFeatureImpact({ data }: { data: Forecasts }) {
+export default function MedicineFeatureImpact({
+  data,
+  horizon = "4m",
+  horizonDays,
+}: {
+  data: Forecasts;
+  horizon?: HorizonLabel;
+  horizonDays?: number;
+}) {
   const impact: MedicineImpact[] = data.medicine_feature_impact ?? [];
   const [view, setView] = useState<"uplift" | "forecast" | "historical">("uplift");
   const [search, setSearch] = useState("");
@@ -70,8 +78,9 @@ export default function MedicineFeatureImpact({ data }: { data: Forecasts }) {
       return `${sign}${e.uplift_vs_baseline_pct.toFixed(0)}%`;
     }
     if (view === "forecast") {
-      if (e.forecast_days_in_window === 0) return "—";
-      return Math.round(e.forecast_total_units).toLocaleString();
+      const fc = e.forecast?.[horizon];
+      if (!fc || fc.days_in_window === 0) return "—";
+      return Math.round(fc.total_units).toLocaleString();
     }
     return e.historical_avg_per_day.toFixed(1);
   }
@@ -79,12 +88,14 @@ export default function MedicineFeatureImpact({ data }: { data: Forecasts }) {
   function cellTitle(row: MedicineImpact, ev: string): string {
     const e = row.events[ev];
     if (!e) return "";
-    const days = e.forecast_days_in_window;
+    const fc = e.forecast?.[horizon];
+    const days = fc?.days_in_window ?? 0;
+    const total = fc?.total_units ?? 0;
     return [
       `${row.medicine} • ${EVENT_LABELS[ev]?.label ?? ev}`,
       `Historical avg / day: ${e.historical_avg_per_day.toFixed(2)}`,
       `Uplift vs baseline:   ${e.uplift_vs_baseline_pct > 0 ? "+" : ""}${e.uplift_vs_baseline_pct.toFixed(1)}%`,
-      `Forecast total:       ${Math.round(e.forecast_total_units).toLocaleString()} units across ${days} day${days === 1 ? "" : "s"}`,
+      `Forecast (${horizon}): ${Math.round(total).toLocaleString()} units across ${days} day${days === 1 ? "" : "s"}`,
     ].join("\n");
   }
 
@@ -95,7 +106,8 @@ export default function MedicineFeatureImpact({ data }: { data: Forecasts }) {
           <div className="section-h">Medicine × event impact</div>
           <div className="section-sub mt-1">
             How each medicine&apos;s consumption shifts during dengue, Eid, Ramadan,
-            smog and other windows — plus forecast totals for the next instance of each.
+            smog and other windows — plus forecast totals for the next instance of each
+            inside the active <span className="font-medium">{horizon.replace("m", " month")}</span> horizon.
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -183,8 +195,8 @@ export default function MedicineFeatureImpact({ data }: { data: Forecasts }) {
         <span className="font-medium text-ink-600">Reading the table:</span>{" "}
         <em>Uplift %</em> compares the medicine&apos;s avg daily use during the event
         to its overall baseline — green = surge, red = drop.{" "}
-        <em>Forecast units</em> sum the model&apos;s next-{data.forecast.horizon_days}-day
-        prediction inside the event window. Hover any cell for the full breakdown.
+        <em>Forecast units</em> sums the model&apos;s next-{horizonDays ?? 120}-day prediction
+        inside the event window. Hover any cell for the full breakdown.
       </div>
     </div>
   );
