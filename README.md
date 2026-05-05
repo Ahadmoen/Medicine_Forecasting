@@ -1,6 +1,6 @@
 # Hospital Medicine Demand Forecasting
 
-> FYP — FAST NUCES · Hamza Nadeem & Ahad Moeen
+> FYP — FAST NUCES · Hamza Nadeem
 
 A complete pipeline that takes one year of hospital dispensing records and
 forecasts how much of each medicine will be needed for the **next 3-4
