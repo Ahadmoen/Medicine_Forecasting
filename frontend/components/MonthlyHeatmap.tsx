@@ -1,16 +1,18 @@
-import { Forecasts } from "@/lib/types";
+import { Forecasts, ForecastAggRow } from "@/lib/types";
 
 export default function MonthlyHeatmap({
   data,
   horizonDays,
+  modelName,
+  monthlyOverride,
 }: {
   data: Forecasts;
   horizonDays?: number;
+  modelName?: string;
+  monthlyOverride?: ForecastAggRow[];
 }) {
   const meds = data.top_medicines.slice(0, 12);
 
-  // Compute the cutoff month based on the chosen horizon, so the heatmap
-  // only shows the months actually inside the active forecast window.
   const cutoffMonth = (() => {
     const allDates = data.forecast.daily.map((r) => r.date).sort();
     if (!horizonDays || allDates.length === 0) return null;
@@ -20,14 +22,14 @@ export default function MonthlyHeatmap({
     return cutoff.toISOString().slice(0, 7);
   })();
 
-  const months = Array.from(
-    new Set(data.forecast.monthly_by_medicine.map((r) => r.month!))
-  )
+  const source = monthlyOverride ?? data.forecast.monthly_by_medicine;
+
+  const months = Array.from(new Set(source.map((r) => r.month!)))
     .sort()
     .filter((m) => (cutoffMonth ? m <= cutoffMonth : true));
 
   const lookup: Record<string, Record<string, number>> = {};
-  for (const r of data.forecast.monthly_by_medicine) {
+  for (const r of source) {
     lookup[r.GenericName] ??= {};
     lookup[r.GenericName][r.month!] = r.qty;
   }
@@ -39,8 +41,9 @@ export default function MonthlyHeatmap({
     <div className="card">
       <div className="section-h mb-1">Monthly demand heatmap</div>
       <div className="section-sub mb-4">
-        Predicted units per medicine, per calendar month — quick glance at where
-        consumption peaks (clipped to the active horizon).
+        Predicted units per medicine per calendar month, from the active model
+        (<span className="font-medium">{modelName ?? "HistGradientBoosting"}</span>),
+        clipped to the active horizon.
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

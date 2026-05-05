@@ -564,6 +564,17 @@ def main():
     print("Computing per-medicine event impact (dengue / Eid / Ramadan / smog / ...)...")
     impact = medicine_feature_impact(daily, fc, medicines)
 
+    print("Training comparison models (RF / XGBoost / ARIMA / SARIMA / Prophet / LSTM)...")
+    from forecasting import train_all_models
+    model_results = train_all_models(
+        df_full=df,
+        daily=daily,
+        feature_cols=FEATURE_COLS,
+        medicines=medicines,
+        horizon_days=FORECAST_DAYS,
+        cal_builder=build_calendar_features,
+    )
+
     fc["month"] = fc["date"].dt.to_period("M").astype(str)
     monthly = fc.groupby(["GenericName", "month"])["qty"].sum().round().reset_index()
     weekly = fc.copy()
@@ -576,6 +587,14 @@ def main():
     )
     hist_total_by_med = (
         daily.groupby("GenericName")["qty"].sum().sort_values(ascending=False).reset_index()
+    )
+    # Per-medicine daily series — feeds the preprocessing chart on the
+    # frontend (rolling mean/median/mode/std/variance overlays).
+    daily_by_med = (
+        daily.assign(date=lambda d: d["date"].dt.date.astype(str))
+             .rename(columns={"GenericName": "medicine"})
+             [["date", "medicine", "qty"]]
+             .to_dict(orient="records")
     )
 
     dengue_hist = (
@@ -604,6 +623,7 @@ def main():
             "daily_total": hist_daily.to_dict(orient="records"),
             "total_by_medicine": hist_total_by_med.to_dict(orient="records"),
             "dengue_proxy_daily": dengue_hist,
+            "daily_by_medicine": daily_by_med,
         },
         "trends": {
             "city": "Lahore",
@@ -637,6 +657,17 @@ def main():
             "weekly_by_medicine":  weekly_agg.to_dict(orient="records"),
         },
         "medicine_feature_impact": impact,
+        "models": [
+            {
+                "name": r["name"],
+                "metrics": r["metrics"],
+                "monthly_by_medicine": r["monthly_by_medicine"],
+                # Skip per-model daily payload to keep forecasts.json small —
+                # the dashboard uses monthly aggregates for model comparison
+                # and falls back to the panel-model daily series for charts.
+            }
+            for r in model_results
+        ],
         "explainability": {
             "global_shap": importance,
             "local_lime":  local,
