@@ -1,6 +1,8 @@
 import Header from "@/components/Header";
 import KpiCards from "@/components/KpiCards";
 import HistoryChart from "@/components/HistoryChart";
+import PreprocessingChart from "@/components/PreprocessingChart";
+import CalendarHeatmap from "@/components/CalendarHeatmap";
 import LahoreTrendsChart from "@/components/LahoreTrendsChart";
 import TopMedicinesTable from "@/components/TopMedicinesTable";
 import ShapChart from "@/components/ShapChart";
@@ -20,6 +22,8 @@ export default async function Home() {
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
         <KpiCards data={data} />
         <HistoryChart data={data} />
+        <PreprocessingChart data={data} />
+        <CalendarHeatmap data={data} />
         <ForecastSection data={data} />
         <LahoreTrendsChart data={data} />
         <TopMedicinesTable data={data} />

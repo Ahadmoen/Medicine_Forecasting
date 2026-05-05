@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { Forecasts } from "@/lib/types";
+import { Forecasts, ForecastAggRow } from "@/lib/types";
 import {
   CartesianGrid,
   Line,
@@ -26,9 +26,13 @@ const BANDS: { start: string; end: string; label: string; color: string }[] = [
 export default function ForecastChart({
   data,
   horizonDays,
+  modelName,
+  monthlyOverride,
 }: {
   data: Forecasts;
   horizonDays?: number;
+  modelName?: string;
+  monthlyOverride?: ForecastAggRow[];
 }) {
   const [medicine, setMedicine] = useState<string>(data.top_medicines[0] ?? data.medicines[0]);
 
@@ -51,11 +55,12 @@ export default function ForecastChart({
   }, [data, medicine, horizonCutoff]);
 
   const monthlyAgg = useMemo(() => {
-    const rows = data.forecast.monthly_by_medicine.filter((r) => r.GenericName === medicine);
+    const source = monthlyOverride ?? data.forecast.monthly_by_medicine;
+    const rows = source.filter((r) => r.GenericName === medicine);
     if (!horizonCutoff) return rows;
     const cutoffMonth = horizonCutoff.slice(0, 7);
     return rows.filter((r) => (r.month ?? "") <= cutoffMonth);
-  }, [data, medicine, horizonCutoff]);
+  }, [data, medicine, horizonCutoff, monthlyOverride]);
 
   const effectiveDays = horizonDays ?? data.forecast.horizon_days;
 
@@ -65,8 +70,10 @@ export default function ForecastChart({
         <div>
           <div className="section-h">Forecast for next {effectiveDays} days</div>
           <div className="section-sub">
-            Choose a medicine to inspect daily projected demand. Shaded bands mark Eid /
-            Ramadan / public-holiday windows the model accounts for.
+            Choose a medicine to inspect daily projected demand. Monthly tags
+            switch with the active model (
+            <span className="font-medium">{modelName ?? "HistGradientBoosting"}</span>
+            ). Shaded bands mark Eid / Ramadan / public-holiday windows.
           </div>
         </div>
         <select

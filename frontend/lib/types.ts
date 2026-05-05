@@ -45,6 +45,27 @@ export type ForecastAggRow = {
   week?: string;
 };
 
+export type ModelMetrics = {
+  mae: number;
+  rmse: number;
+  r2: number;
+  confidence_pct: number;
+  n_test: number;
+  type: string;
+};
+
+export type ModelResult = {
+  name: string;
+  metrics: ModelMetrics;
+  monthly_by_medicine: ForecastAggRow[];
+};
+
+export type DailyByMedicineRow = {
+  date: string;
+  medicine: string;
+  qty: number;
+};
+
 export type ShapImportance = { feature: string; importance: number };
 export type LimeContribution = { feature: string; contribution: number };
 
@@ -79,6 +100,7 @@ export type Forecasts = {
     daily_total: { date: string; qty: number }[];
     total_by_medicine: { GenericName: string; qty: number }[];
     dengue_proxy_daily?: { date: string; cases: number }[];
+    daily_by_medicine?: DailyByMedicineRow[];
   };
   forecast: {
     horizon_days: number;
@@ -97,6 +119,7 @@ export type Forecasts = {
     weather_climatology: WeatherClimatology[];
   };
   medicine_feature_impact?: MedicineImpact[];
+  models?: ModelResult[];
   explainability: {
     global_shap: ShapImportance[];
     local_lime: Record<string, LimeContribution[]>;
